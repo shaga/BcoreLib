@@ -50,7 +50,9 @@ namespace BcoreLib
         {
             _watcher = new BluetoothLEAdvertisementWatcher()
             {
-                ScanningMode = BluetoothLEScanningMode.Active
+                AdvertisementFilter = BcoreAdvertisementFilter,
+                ScanningMode = BluetoothLEScanningMode.Active,
+                
             };
             _watcher.Received += OnWatcherReceived;
         }
