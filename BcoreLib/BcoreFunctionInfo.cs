@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace BcoreLib
 {
+    /// <summary>
+    /// bCore機能情報
+    /// </summary>
     public class BcoreFunctionInfo
     {
         #region const
@@ -31,10 +34,19 @@ namespace BcoreLib
 
         #region property
 
+        /// <summary>
+        /// モータ数
+        /// </summary>
         public int MotorCount => GetPortCount(_motorPorts);
 
+        /// <summary>
+        /// サーボ数
+        /// </summary>
         public int ServoCount => GetPortCount(_servoPorts);
 
+        /// <summary>
+        /// ポートアウト数
+        /// </summary>
         public int PortOutCount => GetPortCount(_portOuts);
 
         #endregion
@@ -52,16 +64,31 @@ namespace BcoreLib
 
         #region method
 
+        /// <summary>
+        /// モータ状態
+        /// </summary>
+        /// <param name="idx">モータINDEX</param>
+        /// <returns>true=有効/false=無効</returns>
         public bool IsEnableMotorPort(int idx)
         {
             return IsEnablePort(idx, _motorPorts);
         }
 
+        /// <summary>
+        /// サーボ状態
+        /// </summary>
+        /// <param name="idx">サーボINDEX</param>
+        /// <returns>true=有効/false=無効</returns>
         public bool IsEnableServoPort(int idx)
         {
             return IsEnablePort(idx, _servoPorts);
         }
 
+        /// <summary>
+        /// ポートアウト状態
+        /// </summary>
+        /// <param name="idx">ポートアウトINDEX</param>
+        /// <returns>true=有効/false=無効</returns>
         public bool IsEnablePortOut(int idx)
         {
             return IsEnablePort(idx, _portOuts);

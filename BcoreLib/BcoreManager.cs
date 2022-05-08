@@ -9,14 +9,11 @@ using Windows.Devices.Bluetooth.GenericAttributeProfile;
 
 namespace BcoreLib
 {
+    /// <summary>
+    /// bCore操作
+    /// </summary>
     public class BcoreManager : IDisposable
     {
-        #region const
-
-
-
-        #endregion
-
         #region field
 
         private BluetoothLEDevice _device;
@@ -31,12 +28,19 @@ namespace BcoreLib
 
         #region property
 
-        public bool IsInitialized { get; private set; }
+        /// <summary>
+        /// 初期化済みフラグ
+        /// </summary>
+        public bool IsInitialized => (_device?.ConnectionStatus ?? BluetoothConnectionStatus.Disconnected) ==
+                                     BluetoothConnectionStatus.Connected;
 
         #endregion
 
         #region event
 
+        /// <summary>
+        /// 接続状態更新イベント
+        /// </summary>
         public event EventHandler<BcoreConnectionStatusChangedEventArgs> ConnectionStatusChanged;
 
         #endregion
@@ -58,20 +62,18 @@ namespace BcoreLib
 
         #region method
 
+        /// <summary>
+        /// 廃棄
+        /// </summary>
         public void Dispose()
         {
-            foreach (var service in _bcoreServices.Values)
-            {
-                service.Dispose();
-            }
-
-            _bcoreCharacteristics.Clear();
-            _bcoreServices.Clear();
-            _device?.Dispose();
-            _device = null;
-            GC.Collect();
+            Final();
         }
 
+        /// <summary>
+        /// 初期化処理
+        /// </summary>
+        /// <returns></returns>
         public async Task Init()
         {
             RaiseConnectionChanged(BcoreConnectionStatus.Connecting);
@@ -105,6 +107,29 @@ namespace BcoreLib
             }
         }
 
+        /// <summary>
+        /// 終了処理
+        /// </summary>
+        public void Final()
+        {
+            RaiseConnectionChanged(BcoreConnectionStatus.Disconnecting);
+
+            foreach (var service in _bcoreServices.Values)
+            {
+                service.Dispose();
+            }
+
+            _bcoreCharacteristics.Clear();
+            _bcoreServices.Clear();
+            _device?.Dispose();
+            _device = null;
+            GC.Collect();
+        }
+
+        /// <summary>
+        /// バッテリ値読み込み
+        /// </summary>
+        /// <returns>バッテリ値(mV)</returns>
         public async Task<int> ReadBattery()
         {
             var value = await ReadValue(BcoreUuids.BatteryCharacteristic);
@@ -114,6 +139,10 @@ namespace BcoreLib
             return value[0] | (value[1] << 8);
         }
 
+        /// <summary>
+        /// 機能譲歩読み込み
+        /// </summary>
+        /// <returns>bCore機能情報</returns>
         public async Task<BcoreFunctionInfo> ReadFunctionInfo()
         {
             var value = await ReadValue(BcoreUuids.FunctionCharacteristic);
@@ -123,6 +152,13 @@ namespace BcoreLib
             return new BcoreFunctionInfo(value);
         }
 
+        /// <summary>
+        /// モータPWM書き込み
+        /// </summary>
+        /// <param name="idx">モータINDEX</param>
+        /// <param name="speed">モータ速度</param>
+        /// <param name="isFlip">反転フラグ</param>
+        /// <returns></returns>
         public async Task WriteMotorPwmAsync(int idx, int speed, bool isFlip = false)
         {
             if (idx < 0 || Bcore.MaxFunctionCount <= idx) return;
@@ -130,11 +166,25 @@ namespace BcoreLib
             await WriteValue(BcoreUuids.MotorCharacteristic, Bcore.CreateMotorSpeedValue(idx, speed, isFlip));
         }
 
+        /// <summary>
+        /// モータPWM書き込み(完了待ちしない)
+        /// </summary>
+        /// <param name="idx">モータINDEXモータ</param>
+        /// <param name="speed">モータ速度</param>
+        /// <param name="isFlip">反転フラグ</param>
         public async void WriteMotorPwm(int idx, int speed, bool isFlip = false)
         {
             await WriteMotorPwmAsync(idx, speed, isFlip);
         }
 
+        /// <summary>
+        /// サーボ位置書き込み
+        /// </summary>
+        /// <param name="idx">サーボINDEX</param>
+        /// <param name="pos">サーボ位置</param>
+        /// <param name="isFlip">反転フラグ</param>
+        /// <param name="trim">トリム値</param>
+        /// <returns></returns>
         public async Task WriteServoPosAsync(int idx, int pos, bool isFlip = false, int trim = 0)
         {
             if (idx < 0 || Bcore.MaxFunctionCount <= idx) return;
@@ -142,21 +192,47 @@ namespace BcoreLib
             await WriteValue(BcoreUuids.ServoCharacteristic, Bcore.CreateServoPosValue(idx, pos, isFlip, trim));
         }
 
+        /// <summary>
+        /// サーボ位置書き込み
+        /// </summary>
+        /// <param name="idx">サーボINDEX</param>
+        /// <param name="pos">サーボ位置</param>
+        /// <param name="trim">トリム値</param>
+        /// <returns></returns>
         public async Task WriteServoPosAsync(int idx, int pos, int trim)
         {
             await WriteServoPosAsync(idx, pos, false, trim);
         }
 
+        /// <summary>
+        /// サーボ位置書き込み(完了待ちしない
+        /// </summary>
+        /// <param name="idx">サーボINDEX</param>
+        /// <param name="pos">サーボ位置</param>
+        /// <param name="isFlip">反転フラグ</param>
+        /// <param name="trim">トリム値</param>
         public async void WriteServoPos(int idx, int pos, bool isFlip = false, int trim = 0)
         {
             await WriteServoPosAsync(idx, pos, isFlip, trim);
         }
 
-        public async Task WriteServoPos(int idx, int pos, int trim)
+        /// <summary>
+        /// サーボ位置書き込み(完了待ちしない
+        /// </summary>
+        /// <param name="idx">サーボINDEX</param>
+        /// <param name="pos">サーボ位置</param>
+        /// <param name="trim">トリム値</param>
+        public async void WriteServoPos(int idx, int pos, int trim)
         {
             await WriteServoPosAsync(idx, pos, trim);
         }
 
+        /// <summary>
+        /// ポートアウト書き込み
+        /// </summary>
+        /// <param name="idx">ポートINDEX</param>
+        /// <param name="isOn">true=ON/false=OFF</param>
+        /// <returns></returns>
         public async Task WritePortOutAsync(int idx, bool isOn)
         {
             if (idx < 0 || Bcore.MaxFunctionCount <= idx) return;
@@ -166,6 +242,11 @@ namespace BcoreLib
             await WriteValue(BcoreUuids.PortOutCharacteristic, Bcore.CreatePortOutValue(_portOutState));
         }
 
+        /// <summary>
+        /// ポートアウト書き込み
+        /// </summary>
+        /// <param name="state">各ポート状態</param>
+        /// <returns></returns>
         public async Task WritePortOutAsync(bool[] state)
         {
             for (var i = 0; i < Bcore.MaxFunctionCount; i++)
@@ -182,11 +263,20 @@ namespace BcoreLib
             await WriteValue(BcoreUuids.PortOutCharacteristic, Bcore.CreatePortOutValue(state));
         }
 
+        /// <summary>
+        /// ポートアウト書き込み(完了待ちしない
+        /// </summary>
+        /// <param name="idx">ポートINDEX</param>
+        /// <param name="isOn">true=ON/false=OFF</param>
         public async void WritePortOut(int idx, bool isOn)
         {
             await WritePortOutAsync(idx, isOn);
         }
 
+        /// <summary>
+        /// ポートアウト書き込み(完了待ちしない
+        /// </summary>
+        /// <param name="state">各ポート状態</param>
         public async void WritePortOut(bool[] state)
         {
             await WritePortOutAsync(state);

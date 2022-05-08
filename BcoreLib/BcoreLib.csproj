@@ -126,7 +126,6 @@
     <Compile Include="BcoreManager.cs" />
     <Compile Include="BcoreScanner.cs" />
     <Compile Include="BcoreUuids.cs" />
-    <Compile Include="Class1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Properties\BcoreLib.rd.xml" />
   </ItemGroup>
