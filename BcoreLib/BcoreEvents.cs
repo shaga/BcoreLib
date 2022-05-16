@@ -15,11 +15,13 @@ namespace BcoreLib
         /// <summary>
         /// bCoreデバイス
         /// </summary>
-        public BluetoothLEDevice Device;
+        public string Name { get; }
+        public string Id { get; }
 
         public BcoreFoundEventArgs(BluetoothLEDevice device)
         {
-            Device = device;
+            Name = device.Name;
+            Id = device.DeviceId;
         }
     }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -79,6 +80,8 @@ namespace BcoreLib
             var device = await BluetoothLEDevice.FromBluetoothAddressAsync(e.BluetoothAddress);
 
             FoundDevice?.Invoke(this, new BcoreFoundEventArgs(device));
+
+            device?.Dispose();
         }
 
         #endregion

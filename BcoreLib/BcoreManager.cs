@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
@@ -16,7 +17,11 @@ namespace BcoreLib
     {
         #region field
 
+        private string _deviceId;
+
         private BluetoothLEDevice _device;
+
+        private GattDeviceService _bcoreService;
 
         private Dictionary<Guid, GattDeviceService> _bcoreServices;
 
@@ -34,6 +39,8 @@ namespace BcoreLib
         public bool IsInitialized => (_device?.ConnectionStatus ?? BluetoothConnectionStatus.Disconnected) ==
                                      BluetoothConnectionStatus.Connected;
 
+        public string DeviceName => _device?.Name;
+
         #endregion
 
         #region event
@@ -47,10 +54,10 @@ namespace BcoreLib
 
         #region constructor
 
-        public BcoreManager(BluetoothLEDevice device)
+        public BcoreManager(string deviceId)
         {
-            _device = device;
-            _device.ConnectionStatusChanged += OnConnectionChanged;
+            _deviceId = deviceId;
+            //_device.ConnectionStatusChanged += OnConnectionChanged;
 
             _bcoreServices = new Dictionary<Guid, GattDeviceService>();
             _bcoreCharacteristics = new Dictionary<Guid, GattCharacteristic>();
@@ -77,13 +84,26 @@ namespace BcoreLib
         public async Task Init()
         {
             RaiseConnectionChanged(BcoreConnectionStatus.Connecting);
+            if (_deviceId == null)
+            {
+                RaiseConnectionChanged(BcoreConnectionStatus.Disconnected);
+                return;
+            }
+
+            _device = await BluetoothLEDevice.FromIdAsync(_deviceId);
+
             if (_device == null)
             {
                 RaiseConnectionChanged(BcoreConnectionStatus.Disconnected);
                 return;
             }
 
-            var services = await _device.GetGattServicesAsync();
+            var session = await GattSession.FromDeviceIdAsync(_device.BluetoothDeviceId);
+            session.MaintainConnection = false;
+
+            _device.ConnectionStatusChanged += OnConnectionChanged;
+
+            var services = await _device.GetGattServicesAsync(BluetoothCacheMode.Cached);
 
             if (services == null || services.Services.Count == 0)
             {
@@ -93,6 +113,7 @@ namespace BcoreLib
 
             foreach (var service in services.Services)
             {
+                Debug.WriteLine(service.Uuid);
                 _bcoreServices.Add(service.Uuid, service);
             }
 
@@ -114,13 +135,20 @@ namespace BcoreLib
         {
             RaiseConnectionChanged(BcoreConnectionStatus.Disconnecting);
 
-            foreach (var service in _bcoreServices.Values)
+            foreach (var uuid in _bcoreServices.Keys.Reverse())
             {
-                service.Dispose();
+                var service = _bcoreServices[uuid];
+                if (service.Session.SessionStatus == GattSessionStatus.Active)
+                {
+                    service.Session.Dispose();
+                }
+                _bcoreServices[uuid].Dispose();
+                _bcoreServices[uuid] = null;
             }
 
             _bcoreCharacteristics.Clear();
             _bcoreServices.Clear();
+            _device.ConnectionStatusChanged -= OnConnectionChanged;
             _device?.Dispose();
             _device = null;
             GC.Collect();
